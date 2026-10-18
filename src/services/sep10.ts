@@ -144,7 +144,6 @@ function challengeStoreUnavailable(): never {
  * src/lib/time-bounds.ts).
  */
 function expiredChallenge(account?: string): never {
-  // Best-effort audit log for expired challenge rejection.
   if (account) {
     void audit({
       action: AuditAction.AUTH_CHALLENGE_EXPIRED,
@@ -329,12 +328,10 @@ function validateChallengeEnvelope(tx: Transaction, clientAccountId: string): Ti
   if (!isValidAccount(clientAccountId)) invalidChallenge();
   if (tx.memo.type !== MemoNone) invalidChallenge();
 
-  // Explicit home domain assertion: the first manageData operation must carry
-  // `<homeDomain> auth` where `homeDomain` matches the server configuration.
-  // This is a defense-in-depth check — the SDK also validates the home
-  // domain, but catching it here produces a clear, auditable rejection.
   const homeDomain = extractHomeDomain(tx);
-  if (homeDomain !== config.SEP10_HOME_DOMAIN) invalidChallenge();
+  if (!homeDomain || homeDomain.toLowerCase() !== config.SEP10_HOME_DOMAIN.toLowerCase()) {
+    invalidChallenge();
+  }
 
   // Time bounds arrive as decimal strings from the SDK; readTimeBounds
   // normalizes them and returns null for an envelope with none.
@@ -383,7 +380,9 @@ function validateChallengeEnvelope(tx: Transaction, clientAccountId: string): Ti
       invalidChallenge();
     }
     const value = operation.value ? Buffer.from(operation.value).toString("utf8") : "";
-    if (value !== config.WEB_AUTH_DOMAIN) invalidChallenge();
+    if (!value || value.toLowerCase() !== config.WEB_AUTH_DOMAIN.toLowerCase()) {
+      invalidChallenge();
+    }
     webAuthDomainOperations += 1;
   }
   if (webAuthDomainOperations !== 1) invalidChallenge();
