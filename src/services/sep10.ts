@@ -400,6 +400,19 @@ function readChallenge(
   signedXdr: string,
   serverAccount: string
 ): { tx: Transaction; clientAccountID: string } {
+  let tx: Transaction;
+  try {
+    tx = new Transaction(signedXdr, config.networkPassphrase);
+    const bounds = readTimeBounds(tx);
+    if (bounds && bounds.maxTime > 0 && bounds.maxTime + CLOCK_SKEW_TOLERANCE_SECONDS <= nowSeconds()) {
+      if (WebAuth.verifyTxSignedBy(tx, serverAccount)) {
+        expiredChallenge();
+      }
+    }
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+  }
+
   try {
     return WebAuth.readChallengeTx(
       signedXdr,
@@ -416,7 +429,6 @@ function readChallenge(
     ) {
       expiredChallenge();
     }
-    let tx: Transaction;
     try {
       tx = new Transaction(signedXdr, config.networkPassphrase);
       const bounds = readTimeBounds(tx);
