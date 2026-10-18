@@ -36,6 +36,7 @@ import { Errors } from "../errors";
 export interface AuthUser {
   id: string;
   stellarPublicKey: string;
+  scope?: string | string[];
 }
 
 /**
@@ -161,5 +162,9 @@ export function verifyToken(token: string): AuthUser {
     throw Errors.invalidToken();
   }
 
-  return { id: claims.data.sub, stellarPublicKey: claims.data.pk };
+  return {
+    id: claims.data.sub,
+    stellarPublicKey: claims.data.pk,
+    ...(claims.data.scope !== undefined ? { scope: claims.data.scope } : {}),
+  };
 }
