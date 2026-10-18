@@ -414,10 +414,17 @@ function readChallenge(
       error.message === EXPIRED_CHALLENGE_MESSAGE &&
       isExpiredServerChallenge(signedXdr, serverAccount)
     ) {
-      // The SDK's own expiry check fired on an envelope this server signed
-      // whose window has genuinely closed (the SDK allows a loose 300s grace;
-      // our envelope validation re-checks expiry strictly below).
       expiredChallenge();
+    }
+    let tx: Transaction;
+    try {
+      tx = new Transaction(signedXdr, config.networkPassphrase);
+      const bounds = readTimeBounds(tx);
+      if (bounds && bounds.maxTime > 0 && bounds.maxTime + CLOCK_SKEW_TOLERANCE_SECONDS <= nowSeconds()) {
+        expiredChallenge();
+      }
+    } catch {
+      // Fallthrough to invalidChallenge if parsing fails
     }
     // The SDK's message can name internal details; never surface it.
     invalidChallenge();
